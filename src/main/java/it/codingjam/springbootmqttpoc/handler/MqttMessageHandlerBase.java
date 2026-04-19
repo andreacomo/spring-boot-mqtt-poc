@@ -51,13 +51,19 @@ public abstract class MqttMessageHandlerBase implements IMqttMessageListener {
         try {
             handleMessage(payload);
             logger.info("{} finished processing message from {}", getClass().getSimpleName(), topic);
+            
+            messageStorage.store(topic, payload);
+            
+            try {
+                mqttClient.messageArrivedComplete(message.getId(), message.getQos());
+                logger.info("{} acknowledged message from {}", getClass().getSimpleName(), topic);
+            } catch (Exception ackException) {
+                logger.error("{} failed to acknowledge message: {}", getClass().getSimpleName(), ackException.getMessage(), ackException);
+                throw ackException;
+            }
         } catch (Exception e) {
             logger.error("{} failed to process message: {}", getClass().getSimpleName(), e.getMessage(), e);
             throw e;
         }
-
-        messageStorage.store(topic, payload);
-        mqttClient.messageArrivedComplete(message.getId(), message.getQos());
-        logger.info("{} acknowledged message from {}", getClass().getSimpleName(), topic);
     }
 }
