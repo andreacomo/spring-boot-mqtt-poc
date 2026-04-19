@@ -1,5 +1,6 @@
 package it.codingjam.springbootmqttpoc.controller;
 
+import it.codingjam.springbootmqttpoc.config.MqttProperties;
 import it.codingjam.springbootmqttpoc.model.MqttMessage;
 import it.codingjam.springbootmqttpoc.model.PublishRequest;
 import it.codingjam.springbootmqttpoc.model.PublishResponse;
@@ -22,16 +23,12 @@ public class MqttTestController {
 
     private final MqttPublisher mqttPublisher;
     private final MessageStorage messageStorage;
+    private final MqttProperties mqttProperties;
 
-    @Value("${mqtt.broker-url}")
-    private String brokerUrl;
-
-    @Value("${mqtt.client-id}")
-    private String clientId;
-
-    public MqttTestController(MqttPublisher mqttPublisher, MessageStorage messageStorage) {
+    public MqttTestController(MqttPublisher mqttPublisher, MessageStorage messageStorage, MqttProperties mqttProperties) {
         this.mqttPublisher = mqttPublisher;
         this.messageStorage = messageStorage;
+        this.mqttProperties = mqttProperties;
     }
 
     @PostMapping("/publish")
@@ -84,7 +81,7 @@ public class MqttTestController {
                     .body(new ErrorResponse("Broker not connected"));
             }
 
-            return ResponseEntity.ok(new StatusResponse(true, brokerUrl, clientId));
+            return ResponseEntity.ok(new StatusResponse(true, mqttProperties.brokerUrl(), mqttProperties.clientId()));
         } catch (Exception e) {
             logger.error("Status check failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)

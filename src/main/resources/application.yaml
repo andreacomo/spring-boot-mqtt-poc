@@ -4,6 +4,8 @@ spring:
 
 mqtt:
   broker-url: tcp://localhost:1883
+  # clientId should be unique and stable across restarts to support persistent sessions
+  # Use hostname or pod name in production (e.g., ${HOSTNAME:spring-mqtt-poc})
   client-id: spring-mqtt-poc
   subscriptions:
     commands:
@@ -12,3 +14,8 @@ mqtt:
     alerts:
       name: alerts
       qos: 2
+
+logging:
+  level:
+    root: INFO
+    it.codingjam.springbootmqttpoc: DEBUG

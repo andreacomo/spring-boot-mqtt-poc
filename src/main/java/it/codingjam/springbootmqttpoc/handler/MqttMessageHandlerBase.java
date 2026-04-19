@@ -30,13 +30,13 @@ public abstract class MqttMessageHandlerBase implements IMqttMessageListener {
     public void subscribe() {
         try {
             logger.info("{} @PostConstruct subscribe() called", getClass().getSimpleName());
-            MqttProperties.TopicConfig config = mqttProperties.getSubscriptions().get(getConfigKey());
+            MqttProperties.TopicConfig config = mqttProperties.subscriptions().get(getConfigKey());
             if (config != null) {
-                logger.info("Subscribing {} to topic '{}' with QoS {}", getClass().getSimpleName(), config.getName(), config.getQos());
-                mqttClient.subscribe(config.getName(), config.getQos(), this);
-                logger.info("Successfully subscribed {} to topic '{}'", getClass().getSimpleName(), config.getName());
+                logger.info("Subscribing {} to topic '{}' with QoS {}", getClass().getSimpleName(), config.name(), config.qos());
+                mqttClient.subscribe(config.name(), config.qos(), this);
+                logger.info("Successfully subscribed {} to topic '{}'", getClass().getSimpleName(), config.name());
             } else {
-                logger.error("Config key '{}' not found in mqtt.subscriptions. Available keys: {}", getConfigKey(), mqttProperties.getSubscriptions().keySet());
+                logger.error("Config key '{}' not found in mqtt.subscriptions. Available keys: {}", getConfigKey(), mqttProperties.subscriptions().keySet());
             }
         } catch (Exception e) {
             logger.error("{} failed to subscribe: {}", getClass().getSimpleName(), e.getMessage(), e);
@@ -53,14 +53,9 @@ public abstract class MqttMessageHandlerBase implements IMqttMessageListener {
             logger.info("{} finished processing message from {}", getClass().getSimpleName(), topic);
             
             messageStorage.store(topic, payload);
-            
-            try {
-                mqttClient.messageArrivedComplete(message.getId(), message.getQos());
-                logger.info("{} acknowledged message from {}", getClass().getSimpleName(), topic);
-            } catch (Exception ackException) {
-                logger.error("{} failed to acknowledge message: {}", getClass().getSimpleName(), ackException.getMessage(), ackException);
-                throw ackException;
-            }
+
+            mqttClient.messageArrivedComplete(message.getId(), message.getQos());
+            logger.info("{} acknowledged message from {}", getClass().getSimpleName(), topic);
         } catch (Exception e) {
             logger.error("{} failed to process message: {}", getClass().getSimpleName(), e.getMessage(), e);
             throw e;
