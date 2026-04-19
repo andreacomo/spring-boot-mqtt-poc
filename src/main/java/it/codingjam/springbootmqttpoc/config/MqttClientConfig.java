@@ -8,14 +8,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import javax.annotation.PreDestroy;
 
 @Configuration
 public class MqttClientConfig {
     private static final Logger logger = LoggerFactory.getLogger(MqttClientConfig.class);
-    private MqttClient mqttClient;
 
-    @Bean
+    @Bean(destroyMethod = "disconnect")
     public MqttClient mqttClient(MqttProperties mqttProperties) throws MqttException {
         MqttClient client = new MqttClient(
             mqttProperties.getBrokerUrl(),
@@ -35,16 +33,6 @@ public class MqttClientConfig {
         client.connect(options);
         logger.info("Connected to MQTT broker");
 
-        this.mqttClient = client;
         return client;
-    }
-
-    @PreDestroy
-    public void shutdown() throws MqttException {
-        if (mqttClient != null && mqttClient.isConnected()) {
-            logger.info("Disconnecting from MQTT broker");
-            mqttClient.disconnect();
-            logger.info("Disconnected from MQTT broker");
-        }
     }
 }
