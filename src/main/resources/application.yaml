@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: spring-mqtt-poc
+
+mqtt:
+  broker-url: tcp://localhost:1883
+  client-id: spring-mqtt-poc
+  subscriptions:
+    commands:
+      name: commands
+      qos: 1
+    alerts:
+      name: alerts
+      qos: 2
