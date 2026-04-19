@@ -13,6 +13,7 @@ public class AlertMessageHandler extends MqttMessageHandlerBase {
 
     public AlertMessageHandler(MessageStorage messageStorage, MqttClient mqttClient, MqttProperties mqttProperties) {
         super(messageStorage, mqttClient, mqttProperties);
+        logger.info("AlertMessageHandler constructed");
     }
 
     @Override

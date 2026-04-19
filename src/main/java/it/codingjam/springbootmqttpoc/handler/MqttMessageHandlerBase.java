@@ -7,7 +7,7 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 
 public abstract class MqttMessageHandlerBase implements IMqttMessageListener {
@@ -27,15 +27,19 @@ public abstract class MqttMessageHandlerBase implements IMqttMessageListener {
     protected abstract void handleMessage(String payload) throws Exception;
 
     @PostConstruct
-    public void subscribe() throws Exception {
-        logger.info("{} @PostConstruct subscribe() called", getClass().getSimpleName());
-        MqttProperties.TopicConfig config = mqttProperties.getSubscriptions().get(getConfigKey());
-        if (config != null) {
-            logger.info("Subscribing {} to topic '{}' with QoS {}", getClass().getSimpleName(), config.getName(), config.getQos());
-            mqttClient.subscribe(config.getName(), config.getQos(), this);
-            logger.info("Successfully subscribed {} to topic '{}'", getClass().getSimpleName(), config.getName());
-        } else {
-            logger.error("Config key '{}' not found in mqtt.subscriptions. Available keys: {}", getConfigKey(), mqttProperties.getSubscriptions().keySet());
+    public void subscribe() {
+        try {
+            logger.info("{} @PostConstruct subscribe() called", getClass().getSimpleName());
+            MqttProperties.TopicConfig config = mqttProperties.getSubscriptions().get(getConfigKey());
+            if (config != null) {
+                logger.info("Subscribing {} to topic '{}' with QoS {}", getClass().getSimpleName(), config.getName(), config.getQos());
+                mqttClient.subscribe(config.getName(), config.getQos(), this);
+                logger.info("Successfully subscribed {} to topic '{}'", getClass().getSimpleName(), config.getName());
+            } else {
+                logger.error("Config key '{}' not found in mqtt.subscriptions. Available keys: {}", getConfigKey(), mqttProperties.getSubscriptions().keySet());
+            }
+        } catch (Exception e) {
+            logger.error("{} failed to subscribe: {}", getClass().getSimpleName(), e.getMessage(), e);
         }
     }
 

@@ -13,6 +13,7 @@ public class CommandMessageHandler extends MqttMessageHandlerBase {
 
     public CommandMessageHandler(MessageStorage messageStorage, MqttClient mqttClient, MqttProperties mqttProperties) {
         super(messageStorage, mqttClient, mqttProperties);
+        logger.info("CommandMessageHandler constructed");
     }
 
     @Override
