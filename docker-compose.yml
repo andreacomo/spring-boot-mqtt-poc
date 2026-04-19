@@ -10,12 +10,12 @@ services:
     environment:
       - TZ=UTC
 
-  mqtt-web-ui:
-    image: hivemq/hivemq-web-client:latest
-    ports:
-      - "8080:80"
-    depends_on:
-      - mosquitto
+  # mqtt-web-ui:
+  #   image: hivemq/hivemq-web-client:latest
+  #   ports:
+  #     - "8080:80"
+  #   depends_on:
+  #     - mosquitto
 
 volumes:
   mosquitto-data:
