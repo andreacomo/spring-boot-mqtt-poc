@@ -9,7 +9,6 @@ import it.codingjam.springbootmqttpoc.model.ErrorResponse;
 import it.codingjam.springbootmqttpoc.service.MqttPublisher;
 import it.codingjam.springbootmqttpoc.service.MessageStorage;
 import org.eclipse.paho.client.mqttv3.MqttException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
