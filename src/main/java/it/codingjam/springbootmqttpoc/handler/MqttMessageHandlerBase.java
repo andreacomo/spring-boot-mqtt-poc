@@ -8,6 +8,7 @@ import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javax.annotation.PostConstruct;
+import java.nio.charset.StandardCharsets;
 
 public abstract class MqttMessageHandlerBase implements IMqttMessageListener {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
@@ -27,28 +28,32 @@ public abstract class MqttMessageHandlerBase implements IMqttMessageListener {
 
     @PostConstruct
     public void subscribe() throws Exception {
+        logger.info("{} @PostConstruct subscribe() called", getClass().getSimpleName());
         MqttProperties.TopicConfig config = mqttProperties.getSubscriptions().get(getConfigKey());
         if (config != null) {
-            logger.info("Subscribing {} to {} with QoS {}", getClass().getSimpleName(), config.getName(), config.getQos());
+            logger.info("Subscribing {} to topic '{}' with QoS {}", getClass().getSimpleName(), config.getName(), config.getQos());
             mqttClient.subscribe(config.getName(), config.getQos(), this);
+            logger.info("Successfully subscribed {} to topic '{}'", getClass().getSimpleName(), config.getName());
         } else {
-            logger.warn("Config key {} not found in mqtt.subscriptions", getConfigKey());
+            logger.error("Config key '{}' not found in mqtt.subscriptions. Available keys: {}", getConfigKey(), mqttProperties.getSubscriptions().keySet());
         }
     }
 
     @Override
     public void messageArrived(String topic, MqttMessage message) throws Exception {
+        String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
+        logger.info("{} received: topic={}, message={}", getClass().getSimpleName(), topic, payload);
+
         try {
-            String payload = new String(message.getPayload());
-            logger.info("{} received: topic={}, message={}", getClass().getSimpleName(), topic, payload);
-
             handleMessage(payload);
-            messageStorage.store(topic, payload);
-
-            mqttClient.messageArrivedComplete(message.getId(), message.getQos());
-            logger.info("{} acknowledged message from {}", getClass().getSimpleName(), topic);
+            logger.info("{} finished processing message from {}", getClass().getSimpleName(), topic);
         } catch (Exception e) {
             logger.error("{} failed to process message: {}", getClass().getSimpleName(), e.getMessage(), e);
+            throw e;
         }
+
+        messageStorage.store(topic, payload);
+        mqttClient.messageArrivedComplete(message.getId(), message.getQos());
+        logger.info("{} acknowledged message from {}", getClass().getSimpleName(), topic);
     }
 }
