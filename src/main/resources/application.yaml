@@ -7,6 +7,15 @@ mqtt:
   # clientId should be unique and stable across restarts to support persistent sessions
   # Use hostname or pod name in production (e.g., ${HOSTNAME:spring-mqtt-poc})
   client-id: spring-mqtt-poc
+  # MQTT5 connection options
+  connection:
+    clean-start: false              # false = resume persistent session on reconnect
+    session-expiry-interval: 3600  # seconds; 0 = session expires on disconnect
+    connection-timeout: 30         # seconds
+    keep-alive-interval: 60        # seconds
+    automatic-reconnect: true
+    max-reconnect-delay: 120       # seconds (max backoff between reconnect attempts)
+    receive-maximum: 100           # max concurrent in-flight QoS 1/2 messages
   subscriptions:
     commands:
       name: commands

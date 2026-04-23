@@ -1,6 +1,8 @@
 package it.codingjam.springbootmqttpoc.service;
 
-import org.eclipse.paho.client.mqttv3.*;
+import org.eclipse.paho.mqttv5.client.MqttClient;
+import org.eclipse.paho.mqttv5.common.MqttException;
+import org.eclipse.paho.mqttv5.common.MqttMessage;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

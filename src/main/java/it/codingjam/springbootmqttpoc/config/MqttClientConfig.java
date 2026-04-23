@@ -1,7 +1,11 @@
 package it.codingjam.springbootmqttpoc.config;
 
-import org.eclipse.paho.client.mqttv3.*;
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
+import org.eclipse.paho.mqttv5.client.*;
+import org.eclipse.paho.mqttv5.client.persist.MemoryPersistence;
+import org.eclipse.paho.mqttv5.client.MqttConnectionOptions;
+import org.eclipse.paho.mqttv5.common.MqttException;
+import org.eclipse.paho.mqttv5.common.MqttMessage;
+import org.eclipse.paho.mqttv5.common.packet.MqttProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.slf4j.Logger;
@@ -12,20 +16,25 @@ public class MqttClientConfig {
     private static final Logger logger = LoggerFactory.getLogger(MqttClientConfig.class);
 
     @Bean(destroyMethod = "disconnect")
-    public MqttClient mqttClient(MqttProperties mqttProperties) throws MqttException {
+    public MqttClient mqttClient(it.codingjam.springbootmqttpoc.config.MqttProperties mqttProperties) throws MqttException {
         // Use MemoryPersistence for stateless K8s-ready architecture
-        // Broker (Mosquitto) handles message durability for QoS 1/2 with cleanSession=false
+        // Broker (Mosquitto) handles message durability for QoS 1/2 with cleanStart=false
         MqttClient client = new MqttClient(
             mqttProperties.brokerUrl(),
             mqttProperties.clientId(),
             new MemoryPersistence()
         );
 
-        // Add connection callback to track connection lifecycle
+        // Add connection callback to track connection lifecycle (MQTT5 MqttCallback interface)
         client.setCallback(new MqttCallback() {
             @Override
-            public void connectionLost(Throwable cause) {
-                logger.warn("MQTT connection lost", cause);
+            public void disconnected(MqttDisconnectResponse response) {
+                logger.warn("MQTT disconnected: {}", response.getReasonString());
+            }
+
+            @Override
+            public void mqttErrorOccurred(MqttException e) {
+                logger.error("MQTT error occurred: {}", e.getMessage(), e);
             }
 
             @Override
@@ -34,17 +43,30 @@ public class MqttClientConfig {
             }
 
             @Override
-            public void deliveryComplete(IMqttDeliveryToken token) {
+            public void deliveryComplete(IMqttToken token) {
                 logger.debug("Message delivery complete");
+            }
+
+            @Override
+            public void connectComplete(boolean reconnect, String serverURI) {
+                logger.info("MQTT connect complete (reconnect={}): {}", reconnect, serverURI);
+            }
+
+            @Override
+            public void authPacketArrived(int reasonCode, MqttProperties properties) {
+                logger.debug("Auth packet arrived, reasonCode={}", reasonCode);
             }
         });
 
-        MqttConnectOptions options = new MqttConnectOptions();
-        options.setCleanSession(false);
-        options.setAutomaticReconnect(true);
-        options.setConnectionTimeout(30);
-        options.setKeepAliveInterval(60);
-        options.setMaxReconnectDelay(10000);
+        it.codingjam.springbootmqttpoc.config.MqttProperties.ConnectionOptions co = mqttProperties.connection();
+        MqttConnectionOptions options = new MqttConnectionOptions();
+        options.setCleanStart(co.cleanStart());
+        options.setSessionExpiryInterval(co.sessionExpiryInterval());
+        options.setConnectionTimeout(co.connectionTimeout());
+        options.setKeepAliveInterval(co.keepAliveInterval());
+        options.setAutomaticReconnect(co.automaticReconnect());
+        options.setAutomaticReconnectDelay(1, co.maxReconnectDelay());
+        options.setReceiveMaximum(co.receiveMaximum());
 
         client.setManualAcks(true);
 
