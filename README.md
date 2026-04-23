@@ -78,4 +78,9 @@ Local Mosquitto broker configuration is in:
 - This repository is a PoC (not production-hardened).
 - Broker persistence is enabled (`persistence true`) to keep sessions/QoS 1-2 messages across broker restarts.
 
+## Alternatives
+
+| Branch | Description |
+|--------|-------------|
+| `alternatives/mqtt5` | MQTT5 upgrade: switches from Paho mqttv3 to mqttv5, adds `MqttConnectionOptions` sourced from `application.yaml`, and expands the callback to the full MQTT5 interface. |
 
