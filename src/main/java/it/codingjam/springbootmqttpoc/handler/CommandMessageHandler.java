@@ -25,5 +25,6 @@ public class CommandMessageHandler extends MqttMessageHandlerBase {
     protected void handleMessage(String payload) throws Exception {
         logger.info("Executing command: {}", payload);
         // Add business logic here
+        throw new UnsupportedOperationException("Command execution not implemented yet");
     }
 }

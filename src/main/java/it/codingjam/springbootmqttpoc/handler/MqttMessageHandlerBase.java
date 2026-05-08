@@ -27,10 +27,8 @@ public abstract class MqttMessageHandlerBase implements IMqttMessageListener {
 
     protected abstract void handleMessage(String payload) throws Exception;
 
-    @PostConstruct
     public void subscribe() {
         try {
-            logger.info("{} @PostConstruct subscribe() called", getClass().getSimpleName());
             MqttProperties.TopicConfig config = mqttProperties.subscriptions().get(getConfigKey());
             if (config != null) {
                 logger.info("Subscribing {} to topic '{}' with QoS {}", getClass().getSimpleName(), config.name(), config.qos());

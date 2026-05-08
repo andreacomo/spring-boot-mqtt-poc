@@ -1,63 +1,102 @@
 package it.codingjam.springbootmqttpoc.config;
 
+import it.codingjam.springbootmqttpoc.handler.MqttMessageHandlerBase;
 import org.eclipse.paho.mqttv5.client.*;
 import org.eclipse.paho.mqttv5.client.persist.MemoryPersistence;
 import org.eclipse.paho.mqttv5.client.MqttConnectionOptions;
 import org.eclipse.paho.mqttv5.common.MqttException;
 import org.eclipse.paho.mqttv5.common.MqttMessage;
 import org.eclipse.paho.mqttv5.common.packet.MqttProperties;
+import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 @Configuration
 public class MqttClientConfig {
     private static final Logger logger = LoggerFactory.getLogger(MqttClientConfig.class);
 
-    @Bean(destroyMethod = "disconnect")
-    public MqttClient mqttClient(it.codingjam.springbootmqttpoc.config.MqttProperties mqttProperties) throws MqttException {
-        // Use MemoryPersistence for stateless K8s-ready architecture
-        // Broker (Mosquitto) handles message durability for QoS 1/2 with cleanStart=false
+    @Bean
+    public MqttClient mqttClient(it.codingjam.springbootmqttpoc.config.MqttProperties mqttProperties,
+                                 ObjectProvider<List<MqttMessageHandlerBase>> listenersProvider) throws MqttException {
+
+        // Use MemoryPersistence for stateless K8s-ready architecture.
+        // Broker handles message durability for QoS 1/2 with cleanStart=false.
         MqttClient client = new MqttClient(
-            mqttProperties.brokerUrl(),
-            mqttProperties.clientId(),
-            new MemoryPersistence()
+                mqttProperties.brokerUrl(),
+                mqttProperties.clientId(),
+                new MemoryPersistence()
         );
 
-        // Add connection callback to track connection lifecycle (MQTT5 MqttCallback interface)
-        client.setCallback(new MqttCallback() {
+        client.setManualAcks(true);
+        client.setCallback(newCallback(listenersProvider));
+
+        logger.info("Configured MQTT client for broker {} with clientId {}", mqttProperties.brokerUrl(), mqttProperties.clientId());
+
+        return client;
+    }
+
+    @Bean(destroyMethod = "stop")
+    public MqttConnectionLifecycleManager mqttConnectionLifecycleManager(
+            MqttClient mqttClient,
+            it.codingjam.springbootmqttpoc.config.MqttProperties mqttProperties) {
+        return new MqttConnectionLifecycleManager(
+                mqttClient,
+                getMqttConnectionOptions(mqttProperties),
+                mqttProperties.brokerUrl(),
+                mqttProperties.connection().automaticReconnect(),
+                mqttProperties.connection().maxReconnectDelay()
+        );
+    }
+
+    private static @NonNull MqttCallback newCallback(ObjectProvider<List<MqttMessageHandlerBase>> listenersProvider) {
+        return new MqttCallback() {
             @Override
             public void disconnected(MqttDisconnectResponse response) {
-                logger.warn("MQTT disconnected: {}", response.getReasonString());
+                logger.warn("MQTT client disconnected: {}", response.getReasonString());
             }
 
             @Override
-            public void mqttErrorOccurred(MqttException e) {
-                logger.error("MQTT error occurred: {}", e.getMessage(), e);
+            public void mqttErrorOccurred(MqttException exception) {
+                logger.error("MQTT error occurred", exception);
             }
 
             @Override
             public void messageArrived(String topic, MqttMessage message) {
-                logger.debug("Message arrived on topic: {}", topic);
+                // Handled by per-subscription IMqttMessageListener callbacks
             }
 
             @Override
             public void deliveryComplete(IMqttToken token) {
-                logger.debug("Message delivery complete");
+                // Used by publisher side
             }
 
             @Override
             public void connectComplete(boolean reconnect, String serverURI) {
-                logger.info("MQTT connect complete (reconnect={}): {}", reconnect, serverURI);
+                if (reconnect) {
+                    logger.info("Reconnected to MQTT broker at {}. Resubscribing listeners...", serverURI);
+                } else {
+                    logger.info("Connected to MQTT broker at {}. Subscribing listeners...", serverURI);
+                }
+                List<MqttMessageHandlerBase> listeners = listenersProvider.getIfAvailable();
+                if (listeners != null) {
+                    listeners.forEach(MqttMessageHandlerBase::subscribe);
+                }
             }
 
             @Override
             public void authPacketArrived(int reasonCode, MqttProperties properties) {
-                logger.debug("Auth packet arrived, reasonCode={}", reasonCode);
+                // Not used
             }
-        });
+        };
+    }
 
+    private static MqttConnectionOptions getMqttConnectionOptions(
+            it.codingjam.springbootmqttpoc.config.MqttProperties mqttProperties) {
         it.codingjam.springbootmqttpoc.config.MqttProperties.ConnectionOptions co = mqttProperties.connection();
         MqttConnectionOptions options = new MqttConnectionOptions();
         options.setCleanStart(co.cleanStart());
@@ -67,19 +106,6 @@ public class MqttClientConfig {
         options.setAutomaticReconnect(co.automaticReconnect());
         options.setAutomaticReconnectDelay(1, co.maxReconnectDelay());
         options.setReceiveMaximum(co.receiveMaximum());
-
-        client.setManualAcks(true);
-
-        logger.info("Connecting to MQTT broker at {} with clientId {}", mqttProperties.brokerUrl(), mqttProperties.clientId());
-        try {
-            client.connect(options);
-            logger.info("Successfully connected to MQTT broker");
-        } catch (MqttException e) {
-            logger.warn("Failed to connect to MQTT broker at {}. Will attempt automatic reconnection.",
-                mqttProperties.brokerUrl(), e);
-            // The client will attempt to reconnect automatically with setAutomaticReconnect(true)
-        }
-
-        return client;
+        return options;
     }
 }
